@@ -1,23 +1,30 @@
 #!/bin/bash
 
-function compose-ls() {
-    stacks=$(docker-compose ls --all)
-    echo "$stacks" | sed "1d" | fzf \
-        --no-sort \
-        --ansi \
-        --wrap \
+function compose-list() {
+    composeList=$(docker-compose ls --all --format json | jq -r '.[] | "\(.Name)|\(.ConfigFiles)|\(.Status)"')
+    composeFiles=$(
+        echo -e "PROJECT\tPATH\tSTATUS"
+        find "$COMPOSE_PATH" -maxdepth 3 -type f -name "*compose.y*ml" | while read -r path; do
+            composeElemetn=$(echo "$composeList" | grep -F "$path" | head -n 1)
+            if [ -n "$composeElemetn" ]; then
+                projectName=$(echo "$composeElemetn" | awk -F'|' '{print $1}')
+                status=$(echo "$composeElemetn" | awk -F'|' '{print $3}')
+            else
+                projectName=$(basename "$(dirname "$path")")
+                serviceCount=$(cat "$path" | yq e '.services | length')
+                status="down($serviceCount)"
+            fi
+            echo -e "$projectName\t$path\t$status"
+        done
+    )
+    composeFiles=$(echo "$composeFiles" | column -t -s $'\t')
+    echo "$composeFiles" | sed "1d" | fzf \
         --reverse \
-        --exact \
-        --border \
-        --list-border \
-        --height 100% \
-        --prompt "🔎 " \
-        --pointer "▶ " \
         --color="header:blue:bold,pointer:bright-blue:bold" \
-        --header "$(echo "$stacks" | head -n 1)" \
+        --header "$(echo "$composeFiles" | head -n 1)" \
         --preview-window down:70%:wrap:follow \
         --preview "compose-stats {1}" \
-        --bind "enter:execute(compose-ps-bind {1} {3})"
+        --bind "enter:execute(compose-ps-bind {1} {2})"
 }
 
 function compose-stats() {
@@ -34,24 +41,31 @@ function compose-stats() {
 
 function compose-ps-bind() {
     export COMPOSE_PROJECT_NAME="$1"
-    export COMPOSE_FILE=$(docker-compose ls --all --filter "name=$COMPOSE_PROJECT_NAME" --format json | jq -r ".[].ConfigFiles")
-    ps=$(docker-compose ps --all --format "$FORMAT")
+    export COMPOSE_FILE="$2"
+    ps=$(compose-services)
     echo "$ps" | sed "1d" | fzf \
-        --no-sort \
-        --ansi \
-        --wrap \
         --reverse \
-        --exact \
-        --border \
-        --list-border \
-        --height 100% \
-        --prompt "🔎 " \
-        --pointer "▶ " \
         --color="header:blue:bold,pointer:bright-blue:bold" \
         --header "$(echo "$ps" | head -n 1)" \
         --preview-window down:70%:wrap:follow \
         --preview "compose-logs {1}" \
-        --bind "enter:execute(compose-custom-commands {1})"
+        --bind "enter:execute(custom-commands-list {1})+reload(compose-services | sed '1d')+transform-header(compose-services | head -n 1)"
+}
+
+function compose-services() {
+    ps=$(docker-compose ps --all --format "$DOCKER_PS_FORMAT")
+    serviceCount=$(echo "$ps" | wc -l)
+    if [ "$serviceCount" -le 1 ]; then
+        ps=$(
+            {
+                echo -e "SERVICE\tSTATUS"
+                yq e '.services | keys | .[]' "$COMPOSE_FILE" | while read -r svc; do
+                    echo -e "$svc\tdown"
+                done
+            } | column -t -s $'\t'
+        )
+    fi
+    echo "$ps"
 }
 
 function compose-logs() {
@@ -63,21 +77,12 @@ function compose-logs() {
     done
 }
 
-function compose-custom-commands() {
+function custom-commands-list() {
     export COMPOSE_SERVICE_NAME="$1"
     mapfile -t commands < <(yq e '.customCommands[].name' config.yml)
     commandsName=$(printf "%s\n" "${commands[@]}")
     echo "$commandsName" | fzf \
-        --no-sort \
-        --ansi \
-        --wrap \
         --reverse \
-        --exact \
-        --border \
-        --list-border \
-        --height 100% \
-        --prompt "🔎 " \
-        --pointer "▶ " \
         --preview-window up:30%:wrap:follow \
         --preview "compose-ps-preview" \
         --bind "enter:execute(custom-command-run '{}')"
@@ -85,7 +90,7 @@ function compose-custom-commands() {
 
 function compose-ps-preview() {
     while true; do
-        ps=$(docker-compose ps --all --format "$FORMAT")
+        ps=$(compose-services)
         serviceCount=$(($(echo "$ps" | wc -l) - 1))
         upCount=0
         exitCount=0
@@ -112,7 +117,7 @@ function compose-ps-preview() {
         else
             icon="🔴"
         fi
-        header="$icon Live status\n\n   \x1b[34;1m$header\x1b[0m"
+        header="📊 Status\n\n   \x1b[34;1m$header\x1b[0m"
         clear
         echo -e "$header"
         IFS=$'\n'
@@ -131,16 +136,30 @@ function custom-command-run() {
     fi
 }
 
-export COMPOSE_PATH=${COMPOSE_PATH:-/docker}
-export TIMEOUT=${TIMEOUT:-2}
-export FORMAT="table {{.Service}}\t{{.Status}}\t{{.RunningFor}}\t{{.Image}}\t{{.Command}}\t{{.Ports}}"
-export -f compose-ls
+export -f compose-list
 export -f compose-stats
 export -f compose-ps-bind
+export -f compose-services
 export -f compose-logs
-export -f compose-custom-commands
+export -f custom-commands-list
 export -f compose-ps-preview
 export -f custom-command-run
+
+# export COMPOSE_PATH=${COMPOSE_PATH:-/docker}
+export COMPOSE_PATH=${COMPOSE_PATH:-/home/lifailon/docker}
+export TIMEOUT=${TIMEOUT:-2}
+
+export DOCKER_PS_FORMAT="table {{.Service}}\t{{.Status}}\t{{.RunningFor}}\t{{.Image}}\t{{.Command}}\t{{.Ports}}"
+export FZF_DEFAULT_OPTS="
+--no-sort
+--ansi
+--wrap
+--border
+--list-border
+--height=100%
+--prompt='🔎 '
+--pointer='▶ '
+"
 
 clear
 if [ "$TTYD_MODE" == "true" ]; then
@@ -148,9 +167,9 @@ if [ "$TTYD_MODE" == "true" ]; then
     if [ -n "${TTYD_USER}" ] && [ -n "${TTYD_PASS}" ]; then
         TTYD_OPTIONS+=" -c ${TTYD_USER}:${TTYD_PASS}"
     fi
-    # exec ttyd $TTYD_OPTIONS bash -c compose-ls
-    ttyd $TTYD_OPTIONS bash -c compose-ls
+    # exec ttyd $TTYD_OPTIONS bash -c compose-list
+    ttyd $TTYD_OPTIONS bash -c compose-list
 else
-    # exec bash -c compose-ls
-    bash -c compose-ls
+    # exec bash -c compose-list
+    bash -c compose-list
 fi
