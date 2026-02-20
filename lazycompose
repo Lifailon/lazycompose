@@ -1,6 +1,17 @@
 #!/bin/bash
 
 function compose-list() {
+    projects=$(compose-find)
+    echo "$projects" | sed "1d" | fzf \
+        --reverse \
+        --color="header:blue:bold,pointer:bright-blue:bold" \
+        --header "$(echo "$composeFiles" | head -n 1)" \
+        --preview-window down:70%:wrap:follow \
+        --preview "compose-stats {1}" \
+        --bind "enter:execute(compose-ps-bind {1} {2})+reload(compose-find | sed '1d')+transform-header(compose-find | head -n 1)"
+}
+
+function compose-find() {
     composeList=$(docker-compose ls --all --format json | jq -r '.[] | "\(.Name)|\(.ConfigFiles)|\(.Status)"')
     composeFiles=$(
         echo -e "PROJECT\tPATH\tSTATUS"
@@ -17,14 +28,7 @@ function compose-list() {
             echo -e "$projectName\t$path\t$status"
         done
     )
-    composeFiles=$(echo "$composeFiles" | column -t -s $'\t')
-    echo "$composeFiles" | sed "1d" | fzf \
-        --reverse \
-        --color="header:blue:bold,pointer:bright-blue:bold" \
-        --header "$(echo "$composeFiles" | head -n 1)" \
-        --preview-window down:70%:wrap:follow \
-        --preview "compose-stats {1}" \
-        --bind "enter:execute(compose-ps-bind {1} {2})"
+    echo "$composeFiles" | column -t -s $'\t'
 }
 
 function compose-stats() {
@@ -59,10 +63,15 @@ function compose-services() {
         ps=$(
             {
                 echo -e "SERVICE\tIMAGE\tSTATE"
-                yq e '.services | keys | .[]' "$COMPOSE_FILE" | while read -r svc; do
-                    img=$(yq e ".services.$svc.image // \"null\"" "$COMPOSE_FILE")
-                    echo -e "$svc\t$img\tdown"
-                done
+                services=$(yq e '.services | select(. != null) | keys | .[]' "$COMPOSE_FILE")
+                if [[ -z "$services" ]]; then
+                    echo -e "null\tnull\tdown"
+                else
+                    echo "$services" | while read -r svc; do
+                        img=$(yq e ".services.$svc.image // \"null\"" "$COMPOSE_FILE")
+                        echo -e "$svc\t$img\tdown"
+                    done
+                fi
             } | column -t -s $'\t'
         )
     fi
@@ -87,7 +96,7 @@ function compose-services() {
         lines+=("$line")
     done < <(echo "$ps")
     IFS=$'\n'
-    echo -e "${lines[*]}" | column -t -s $'\t'
+    echo "${lines[*]}" | column -t -s $'\t'
 }
 
 function compose-logs() {
@@ -145,10 +154,13 @@ function custom-command-run() {
 }
 
 export -f compose-list
+export -f compose-find
 export -f compose-stats
+
 export -f compose-ps-bind
 export -f compose-services
 export -f compose-logs
+
 export -f custom-commands-list
 export -f compose-ps-preview
 export -f custom-command-run
