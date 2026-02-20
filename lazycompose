@@ -149,12 +149,26 @@ function compose-ps-preview() {
 
 function custom-command-run() {
     COMMAND_NAME="$*"
-    command=$(yq e ".customCommands[] | select(.name == \"$COMMAND_NAME\") | .command" config.yml)
+    COMMAND=$(yq e ".customCommands[] | select(.name == \"$COMMAND_NAME\") | .command" config.yml)
     attach=$(yq e ".customCommands[] | select(.name == \"$COMMAND_NAME\") | .attach" config.yml)
-    eval "$command"
     if [ "$attach" == "true" ]; then
-        read -r
+        custom-command-attach "$COMMAND"
+    else
+        eval "$COMMAND"
     fi
+}
+
+function custom-command-attach() {
+    COMMAND="$*"
+    eval "$COMMAND" | fzf \
+    --reverse \
+    --preview-window up:30%:wrap:follow \
+    --preview "compose-ps-preview" \
+    --pointer="" \
+    --disabled \
+    --no-input \
+    --bind 'start:unbind(up,down,pgup,pgdn)' \
+    --color "fg+:-1,bg+:-1,hl+:-1"
 }
 
 export -f compose-list
@@ -168,6 +182,7 @@ export -f compose-logs
 export -f custom-commands-list
 export -f compose-ps-preview
 export -f custom-command-run
+export -f custom-command-attach
 
 # export COMPOSE_PATH=${COMPOSE_PATH:-/docker}
 export COMPOSE_PATH=${COMPOSE_PATH:-/home/lifailon/docker}
