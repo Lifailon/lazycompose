@@ -1,23 +1,4 @@
 customCommands:
-  - name: ➕ Create project
-    command: |
-      read -p "💡 Enter name for new project: " NEW_PROJECT_NAME
-      if [[ -n "$NEW_PROJECT_NAME" ]]; then
-        export COMPOSE_PROJECT_NAME=$NEW_PROJECT_NAME
-        export COMPOSE_FILE="$COMPOSE_PATH/$COMPOSE_PROJECT_NAME/docker-compose.yml"
-        mkdir -p "$COMPOSE_PATH/$COMPOSE_PROJECT_NAME"
-        touch $COMPOSE_FILE
-        micro $COMPOSE_FILE
-      fi
-    attach: true
-  - name: 🗑️ Delete project
-    command: |
-      read -p "⚠️ Enter Y for delete $COMPOSE_PROJECT_NAME project: " DELETE_PROJECT
-      if [[ "$DELETE_PROJECT" == "Y" ]]; then
-        docker-compose down || true
-        rm -rf $(dirname $COMPOSE_FILE)
-      fi
-    attach: true
   - name: 📝 Compose edit
     command: micro $COMPOSE_FILE
     attach: false
@@ -29,20 +10,17 @@ customCommands:
     attach: true
   - name: 🔼 Up stack
     command: docker-compose up -d
-    attach: true
+    attach: false
   - name: 🔻 Down stack
     command: docker-compose down
-    attach: true
-  - name: 🔄 Restart all containers
-    command: docker-compose restart
     attach: false
-  - name: ⏹️ Stop all containers
-    command: docker-compose stop
+  - name: ♻️ Recreate stack
+    command: docker-compose up -d --force-recreate
     attach: false
-  - name: ♻️ Restart container
+  - name: 🔄 Restart container
     command: docker-compose restart $COMPOSE_SERVICE_NAME
     attach: false
-  - name: 🛑 Stop container
+  - name: ⏹️ Stop container
     command: docker-compose stop $COMPOSE_SERVICE_NAME
     attach: false
   - name: 🔍 Logs fuzzy
@@ -61,10 +39,10 @@ customCommands:
     command: docker logs $COMPOSE_SERVICE_NAME 2>&1 | while read -r line; do echo $line | jq -c; done
     attach: false
   - name: $_ Sh
-    command: docker-compose exec $COMPOSE_SERVICE_NAME sh
+    command: docker-compose exec $COMPOSE_SERVICE_NAME /bin/sh
     attach: false
   - name: 🔑 Bash root
-    command: docker-compose exec -u root $COMPOSE_SERVICE_NAME bash
+    command: docker-compose exec -u root $COMPOSE_SERVICE_NAME /bin/bash
     attach: false
   - name: 📊 top
     command: docker-compose top
@@ -106,4 +84,42 @@ customCommands:
     attach: false
   - name: 🔨 Build image
     command: docker-compose up -d --force-recreate --build $COMPOSE_SERVICE_NAME
+    attach: true
+  - name: 📮 Images size
+    command: docker-compose images
+    attach: true
+  - name: 📥 Images update
+    command: docker-compose pull
+    attach: true
+  - name: 📦 Image history
+    command: docker history $COMPOSE_IMAGE_NAME
+    attach: true
+  - name: 💾 Image save
+    command: docker save $COMPOSE_IMAGE_NAME | dd status=progress | gzip > $(echo $COMPOSE_IMAGE_NAME | sed -r "s/\/|:/-/g").tar.gz && ls -lh *.tar
+    attach: true
+  - name: ☁️ Docker Hub tags
+    command: |
+      replaceTag=$(echo $COMPOSE_IMAGE_NAME | sed -r "s/:.+//")
+      (printf "DATE TIME TAG\n"; \
+      curl -sSL "https://registry.hub.docker.com/v2/repositories/${replaceTag}/tags?page_size=100" | \
+      jq -r '.results[] | "\(.last_updated|sub("\\..*";"")|sub("T";" ")) \(.name)"') | column -t
+    attach: true
+  - name: ➕ Create project
+    command: |
+      read -p "💡 Enter name for new project: " NEW_PROJECT_NAME
+      if [[ -n "$NEW_PROJECT_NAME" ]]; then
+        export COMPOSE_PROJECT_NAME=$NEW_PROJECT_NAME
+        export COMPOSE_FILE="$COMPOSE_PATH/$COMPOSE_PROJECT_NAME/docker-compose.yml"
+        mkdir -p "$COMPOSE_PATH/$COMPOSE_PROJECT_NAME"
+        touch $COMPOSE_FILE
+        micro $COMPOSE_FILE
+      fi
+    attach: true
+  - name: 🗑️ Delete project
+    command: |
+      read -p "⚠️ Enter Y for delete $COMPOSE_PROJECT_NAME project: " DELETE_PROJECT
+      if [[ "$DELETE_PROJECT" == "Y" ]]; then
+        docker-compose down || true
+        rm -rf $(dirname $COMPOSE_FILE)
+      fi
     attach: true
