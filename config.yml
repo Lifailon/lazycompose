@@ -85,8 +85,19 @@ customCommands:
   - name: 🔨 Build image
     command: docker-compose up -d --force-recreate --build $COMPOSE_SERVICE_NAME
     attach: true
-  - name: 📮 Images size
-    command: docker-compose images
+  - name: 📮 Images delete
+    command: |
+      docker images --all | { 
+        read -r header
+        fzf --header="$header" --reverse --multi --preview-window down:70%:wrap --preview 'docker image inspect {3} | jq -C .[]'
+      } | awk '{print $1":"$2}' | {
+        images=$(cat)
+        [ -z "$images" ] && exit 0
+        read -p "⚠️ Enter Y for delete $(echo "$images" | xargs) images: " DELETE_IMAGES < /dev/tty
+          if [[ "$DELETE_IMAGES" == "Y" ]]; then
+            echo "$images" | xargs docker rmi
+          fi
+      }
     attach: true
   - name: 📥 Images update
     command: docker-compose pull
@@ -95,7 +106,7 @@ customCommands:
     command: docker history $COMPOSE_IMAGE_NAME
     attach: true
   - name: 💾 Image save
-    command: docker save $COMPOSE_IMAGE_NAME | dd status=progress | gzip > $(echo $COMPOSE_IMAGE_NAME | sed -r "s/\/|:/-/g").tar.gz && ls -lh *.tar
+    command: docker save $COMPOSE_IMAGE_NAME | dd status=progress | gzip > $(echo $COMPOSE_IMAGE_NAME | sed -r "s/\/|:/-/g").tar.gz && ls -lh *.tar.gz
     attach: true
   - name: ☁️ Docker Hub tags
     command: |
@@ -119,7 +130,7 @@ customCommands:
     command: |
       read -p "⚠️ Enter Y for delete $COMPOSE_PROJECT_NAME project: " DELETE_PROJECT
       if [[ "$DELETE_PROJECT" == "Y" ]]; then
-        docker-compose down || true
+        docker-compose down --volumes
         rm -rf $(dirname $COMPOSE_FILE)
       fi
     attach: true
