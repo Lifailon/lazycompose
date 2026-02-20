@@ -2,13 +2,15 @@
 
 function compose-list() {
     projects=$(compose-find)
+    export COMPOSE_PROJECTS_HEADER=$(echo "$projects" | head -n 1)
     echo "$projects" | sed "1d" | fzf \
         --reverse \
+        --exact \
         --color="header:blue:bold,pointer:bright-blue:bold" \
-        --header "$(echo "$composeFiles" | head -n 1)" \
+        --header "$COMPOSE_PROJECTS_HEADER" \
         --preview-window down:70%:wrap:follow \
         --preview "compose-stats {1}" \
-        --bind "enter:execute(compose-ps-bind {1} {2})+reload(compose-find | sed '1d')+transform-header(compose-find | head -n 1)"
+        --bind "enter:execute(compose-ps-bind {1} {2})+reload(compose-find | sed '1d')+transform-header($COMPOSE_PROJECTS_HEADER)"
 }
 
 function compose-find() {
@@ -49,6 +51,7 @@ function compose-ps-bind() {
     ps=$(compose-services)
     echo "$ps" | sed "1d" | fzf \
         --reverse \
+        --exact \
         --color="header:blue:bold,pointer:bright-blue:bold" \
         --header "$(echo "$ps" | head -n 1)" \
         --preview-window down:70%:wrap:follow \
@@ -115,6 +118,7 @@ function custom-commands-list() {
     commandsName=$(printf "%s\n" "${commands[@]}")
     echo "$commandsName" | fzf \
         --reverse \
+        --exact \
         --preview-window up:30%:wrap:follow \
         --preview "compose-ps-preview" \
         --bind "enter:execute(custom-command-run '{}')"
