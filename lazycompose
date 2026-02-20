@@ -6,7 +6,7 @@ function compose-list() {
     echo "$projects" | sed "1d" | fzf \
         --reverse \
         --exact \
-        --color="header:blue:bold,pointer:bright-blue:bold" \
+        --color="header:blue:bold,pointer:bright-blue:bold,list-border:$FZF_LIST_BORDER_COLOR" \
         --header "$COMPOSE_PROJECTS_HEADER" \
         --preview-window down:70%:wrap:follow \
         --preview "compose-stats {1}" \
@@ -52,7 +52,7 @@ function compose-ps-bind() {
     echo "$ps" | sed "1d" | fzf \
         --reverse \
         --exact \
-        --color="header:blue:bold,pointer:bright-blue:bold" \
+        --color="header:blue:bold,pointer:bright-blue:bold,list-border:$FZF_LIST_BORDER_COLOR" \
         --header "$(echo "$ps" | head -n 1)" \
         --preview-window down:70%:wrap:follow \
         --preview "compose-logs {1}" \
@@ -120,6 +120,7 @@ function custom-commands-list() {
         --reverse \
         --exact \
         --preview-window up:30%:wrap:follow \
+        --color "list-border:$FZF_LIST_BORDER_COLOR" \
         --preview "compose-ps-preview" \
         --bind "enter:execute(custom-command-run '{}')"
 }
@@ -160,14 +161,15 @@ function custom-command-run() {
 
 function custom-command-attach() {
     COMMAND="$*"
-    eval "$COMMAND" | fzf \
+    eval "$COMMAND" 2>&1 | fzf \
     --reverse \
+    --bind "result:last" \
     --preview-window up:30%:wrap:follow \
     --preview "compose-ps-preview" \
     --pointer="" \
     --disabled \
     --no-input \
-    --bind 'start:unbind(up,down,pgup,pgdn)' \
+    --bind "start:unbind(up,down,pgup,pgdn)" \
     --color "fg+:-1,bg+:-1,hl+:-1"
 }
 
@@ -189,8 +191,9 @@ export COMPOSE_PATH=${COMPOSE_PATH:-/home/lifailon/docker}
 export COMPOSE_FIND_DEPTH=${COMPOSE_FIND_DEPTH:-3}
 export COMPOSE_STATUS_TIMEOUT=${COMPOSE_STATUS_TIMEOUT:-2}
 
-export DOCKER_PS_FORMAT="table {{.Service}}\t{{.Image}}\t{{.State}}\t{{.Status}}\t{{.RunningFor}}\t{{.Command}}\t{{.Ports}}"
+export FZF_LIST_BORDER_COLOR="#87af87"
 export FZF_DEFAULT_OPTS="--no-sort --ansi --wrap --border --list-border --height=100% --prompt='🔎 ' --pointer='▶ '"
+export DOCKER_PS_FORMAT="table {{.Service}}\t{{.Image}}\t{{.State}}\t{{.Status}}\t{{.RunningFor}}\t{{.Command}}\t{{.Ports}}"
 
 clear
 if [ "$TTYD_MODE" == "true" ]; then

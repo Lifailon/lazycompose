@@ -10,39 +10,39 @@ customCommands:
     attach: true
   - name: 🔼 Up stack
     command: docker-compose up -d
-    attach: false
+    attach: true
   - name: 🔻 Down stack
     command: docker-compose down
-    attach: false
+    attach: true
   - name: ♻️ Recreate stack
     command: docker-compose up -d --force-recreate
-    attach: false
+    attach: true
   - name: 🔄 Restart container
     command: docker-compose restart $COMPOSE_SERVICE_NAME
-    attach: false
+    attach: true
   - name: ⏹️ Stop container
     command: docker-compose stop $COMPOSE_SERVICE_NAME
-    attach: false
+    attach: true
   - name: 🔍 Logs fuzzy
-    command: docker logs $COMPOSE_SERVICE_NAME --timestamps 2>&1 | tspin | fzf --tac
+    command: docker logs $COMPOSE_SERVICE_NAME --follow --timestamps 2>&1 | tspin | fzf --reverse --bind "result:last"
     attach: false
   - name: 🎯 Logs exact
-    command: docker logs $COMPOSE_SERVICE_NAME --timestamps 2>&1 | tspin | fzf --tac --exact
+    command: docker logs $COMPOSE_SERVICE_NAME --follow --timestamps 2>&1 | tspin | fzf --reverse --bind "result:last" --exact
     attach: false
   - name: 💡 Logs regex
     command: |
-      echo "" | fzf --tac --disabled \
+      echo "" | fzf --reverse --bind "result:last" --disabled \
       --bind "start:reload(docker  logs $COMPOSE_SERVICE_NAME --timestamps 2>&1 | tspin | rg --smart-case --color=always {q})" \
       --bind "change:reload(docker logs $COMPOSE_SERVICE_NAME --timestamps 2>&1 | tspin | rg --smart-case --color=always {q} || echo '⚠️ Invalid regex pattern')"
     attach: false
   - name: "{} Logs json"
-    command: docker logs $COMPOSE_SERVICE_NAME 2>&1 | while read -r line; do echo $line | jq -c; done
+    command: docker logs $COMPOSE_SERVICE_NAME --follow 2>&1 | while read -r line; do echo $line | jq -cC; done | fzf --reverse --bind "result:last" --exact
     attach: false
   - name: $_ Sh
-    command: docker-compose exec $COMPOSE_SERVICE_NAME /bin/sh
+    command: docker-compose exec $COMPOSE_SERVICE_NAME 'sh'
     attach: false
   - name: 🔑 Bash root
-    command: docker-compose exec -u root $COMPOSE_SERVICE_NAME /bin/bash
+    command: docker-compose exec -u root $COMPOSE_SERVICE_NAME 'bash'
     attach: false
   - name: 📊 top
     command: docker-compose top
@@ -72,13 +72,13 @@ customCommands:
   - name: 📋 Copy files
     command: |
       docker cp $COMPOSE_SERVICE_NAME:$FILE ./
-      FILES=$(docker-compose exec $COMPOSE_SERVICE_NAME find / -type f | fzf --reverse --multi)
+      FILES=$(docker-compose exec $COMPOSE_SERVICE_NAME find / -type f | fzf --reverse --multi --exact)
       if [ -n "$FILES" ]; then
           echo "$FILES" | while read -r FILE; do
               docker cp $COMPOSE_SERVICE_NAME:"$FILE" ./
           done
-      fi
-    attach: true
+      fi && read
+    attach: false
   - name: 🐳 Dockerfile edit
     command: find $(dirname $COMPOSE_FILE) -maxdepth 1 -iname *dockerfile* | head -n 1 | xargs micro
     attach: false
@@ -89,7 +89,7 @@ customCommands:
     command: |
       docker images --all | { 
         read -r header
-        fzf --header="$header" --reverse --multi --preview-window down:70%:wrap --preview 'docker image inspect {3} | jq -C .[]'
+        fzf --header="$header" --reverse --multi --exact --preview 'docker image inspect {3} | jq -C .[]'
       } | awk '{print $1":"$2}' | {
         images=$(cat)
         [ -z "$images" ] && exit 0
@@ -97,8 +97,8 @@ customCommands:
           if [[ "$DELETE_IMAGES" == "Y" ]]; then
             echo "$images" | xargs docker rmi
           fi
-      }
-    attach: true
+      } && read
+    attach: false
   - name: 📥 Images update
     command: docker-compose pull
     attach: true
@@ -125,7 +125,7 @@ customCommands:
         touch $COMPOSE_FILE
         micro $COMPOSE_FILE
       fi
-    attach: true
+    attach: false
   - name: 🗑️ Delete project
     command: |
       read -p "⚠️ Enter Y for delete $COMPOSE_PROJECT_NAME project: " DELETE_PROJECT
@@ -133,4 +133,4 @@ customCommands:
         docker-compose down --volumes
         rm -rf $(dirname $COMPOSE_FILE)
       fi
-    attach: true
+    attach: false
