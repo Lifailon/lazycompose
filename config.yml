@@ -1,4 +1,23 @@
 customCommands:
+  - name: ➕ Create project
+    command: |
+      read -p "💡 Enter name for new project: " NEW_PROJECT_NAME
+      if [[ -n "$NEW_PROJECT_NAME" ]]; then
+        export COMPOSE_PROJECT_NAME=$NEW_PROJECT_NAME
+        export COMPOSE_FILE="$COMPOSE_PATH/$COMPOSE_PROJECT_NAME/docker-compose.yml"
+        mkdir -p "$COMPOSE_PATH/$COMPOSE_PROJECT_NAME"
+        touch $COMPOSE_FILE
+        micro $COMPOSE_FILE
+      fi
+    attach: true
+  - name: 🗑️ Delete project
+    command: |
+      read -p "⚠️ Enter Y for delete $COMPOSE_PROJECT_NAME project: " DELETE_PROJECT
+      if [[ "$DELETE_PROJECT" == "Y" ]]; then
+        docker-compose down || true
+        rm -rf $(dirname $COMPOSE_FILE)
+      fi
+    attach: true
   - name: 📝 Compose edit
     command: micro $COMPOSE_FILE
     attach: false
@@ -29,7 +48,7 @@ customCommands:
   - name: 🔍 Logs fuzzy
     command: docker logs $COMPOSE_SERVICE_NAME --timestamps 2>&1 | tspin | fzf --tac
     attach: false
-  - name: 🚩 Logs exact
+  - name: 🎯 Logs exact
     command: docker logs $COMPOSE_SERVICE_NAME --timestamps 2>&1 | tspin | fzf --tac --exact
     attach: false
   - name: 💡 Logs regex
