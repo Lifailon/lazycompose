@@ -1,0 +1,28 @@
+services:
+  lazycompose:
+    image: lifailon/lazycompose:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - TARGETARCH=${TARGETARCH}
+    container_name: lazycompose
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    environment:
+      - COMPOSE_PATH=/docker
+      - COMPOSE_FIND_DEPTH=3
+      - COMPOSE_STATUS_TIMEOUT=1
+      - TTYD_MODE=false
+      - TTYD_PORT=3333
+      - TTYD_USER=
+      - TTYD_PASS=
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Path to your Docker Compose projects (host:container)
+      - /home/lifailon/docker:/docker
+      # Configuration using your custom commands (optional)
+      # - ./config.yml:/config.yml
+    ports:
+      - 3333:3333
