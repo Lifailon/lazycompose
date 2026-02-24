@@ -69,7 +69,6 @@ function compose-stats() {
         header="\x1b[34;1m$header\x1b[0m"
         echo -e "$header"
         echo -e "$output" | sed '1d'
-        sleep $COMPOSE_STATUS_TIMEOUT
     done
 }
 
@@ -84,23 +83,24 @@ function compose-ps-bind() {
         --header "$(echo "$ps" | head -n 1)" \
         --preview-window down:70%:wrap:follow \
         --preview "compose-logs {1}" \
-        --bind "enter:execute(custom-commands-list {1} {2})+reload(compose-services | sed '1d')+transform-header(compose-services | head -n 1)"
+        --bind "enter:execute(custom-commands-list {1} {2} {3})+reload(compose-services | sed '1d')+transform-header(compose-services | head -n 1)"
 }
 
 function compose-services() {
-    ps=$(docker-compose ps --all --format "table {{.Service}}\t{{.Image}}\t{{.State}}\t{{.Status}}\t{{.RunningFor}}\t{{.Command}}\t{{.Ports}}")
+    ps=$(docker-compose ps --all --format "table {{.Name}}\t{{.Service}}\t{{.Image}}\t{{.State}}\t{{.Status}}\t{{.RunningFor}}\t{{.Command}}\t{{.Ports}}")
     serviceCount=$(echo "$ps" | wc -l)
     if [ "$serviceCount" -le 1 ]; then
         ps=$(
             {
-                echo -e "SERVICE\tIMAGE\tSTATE"
+                echo -e "NAME\tSERVICE\tIMAGE\tSTATE"
                 services=$(yq e '.services | select(. != null) | keys | .[]' "$COMPOSE_FILE")
                 if [[ -z "$services" ]]; then
-                    echo -e "null\tnull\tdown"
+                    echo -e "null\tnull\tnull\tdown"
                 else
                     echo "$services" | while read -r svc; do
+                        cn=$(yq e ".services.$svc.container_name // \"null\"" "$COMPOSE_FILE")
                         img=$(yq e ".services.$svc.image // \"null\"" "$COMPOSE_FILE")
-                        echo -e "$svc\t$img\tdown"
+                        echo -e "$cn\t$svc\t$img\tdown"
                     done
                 fi
             } | column -t -s $'\t'
@@ -115,7 +115,7 @@ function compose-services() {
             lines+=("$line")
             continue
         fi
-        state=$(echo "$line" | awk '{print $3}')
+        state=$(echo "$line" | awk '{print $4}')
         case "$state" in
             run*)  status="🟢" ;;
             exit*) status="🔴" ;;
@@ -133,15 +133,16 @@ function compose-services() {
 function compose-logs() {
     export COMPOSE_SERVICE_NAME="$1"
     while true; do
-        docker logs "$COMPOSE_SERVICE_NAME" --tail 100 2>&1 | tspin
-        sleep $COMPOSE_STATUS_TIMEOUT
         echo -en "\033[H\033[2J"
+        docker logs "$COMPOSE_SERVICE_NAME" --tail 100 2>&1 | tspin
+        sleep 1
     done
 }
 
 function custom-commands-list() {
-    export COMPOSE_SERVICE_NAME="$1"
-    export COMPOSE_IMAGE_NAME="$2"
+    export COMPOSE_CONTAINER_NAME="$1"
+    export COMPOSE_SERVICE_NAME="$2"
+    export COMPOSE_IMAGE_NAME="$3"
     mapfile -t commands < <(yq e '.customCommands[].name' config.yml)
     commandsName=$(printf "%s\n" "${commands[@]}")
     echo "$commandsName" | fzf \
@@ -172,7 +173,6 @@ function compose-ps-preview() {
         echo -e "$header"
         IFS=$'\n'
         echo -e "${lines[*]}"
-        sleep $COMPOSE_STATUS_TIMEOUT
     done
 }
 
@@ -217,7 +217,6 @@ export -f custom-command-attach
 
 export COMPOSE_PATH=${COMPOSE_PATH:-/docker}
 export COMPOSE_FIND_DEPTH=${COMPOSE_FIND_DEPTH:-3}
-export COMPOSE_STATUS_TIMEOUT=${COMPOSE_STATUS_TIMEOUT:-1}
 
 export FZF_LIST_BORDER_COLOR="#87af87"
 export FZF_DEFAULT_OPTS="--no-sort --ansi --wrap --border --list-border --height=100% --prompt='🔎 ' --pointer='▶ '"
