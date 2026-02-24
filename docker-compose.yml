@@ -7,7 +7,7 @@ services:
       args:
         - TARGETARCH=${TARGETARCH}
     container_name: lazycompose
-    restart: unless-stopped
+    restart: always
     stdin_open: true
     tty: true
     environment:

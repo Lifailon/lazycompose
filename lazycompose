@@ -2,15 +2,15 @@
 
 function compose-list() {
     projects=$(compose-find)
-    export COMPOSE_PROJECTS_HEADER=$(echo "$projects" | head -n 1)
+    header=$(echo "$projects" | head -n 1)
     echo "$projects" | sed "1d" | fzf \
         --reverse \
         --exact \
         --color="header:blue:bold,pointer:bright-blue:bold,list-border:$FZF_LIST_BORDER_COLOR" \
-        --header "$COMPOSE_PROJECTS_HEADER" \
+        --header "$header" \
         --preview-window down:70%:wrap:follow \
         --preview "compose-stats {1}" \
-        --bind "enter:execute(compose-ps-bind {1} {2})+reload(compose-find | sed '1d')+transform-header($COMPOSE_PROJECTS_HEADER)"
+        --bind "enter:execute(compose-ps-bind {1} {2})+reload(compose-find | sed '1d')"
 }
 
 function compose-find() {
@@ -22,10 +22,15 @@ function compose-find() {
             if [ -n "$composeElemetn" ]; then
                 projectName=$(echo "$composeElemetn" | awk -F'|' '{print $1}')
                 status=$(echo "$composeElemetn" | awk -F'|' '{print $3}')
+                if [[ "$status" == *","* ]]; then
+                    status="🟡 $status"
+                else
+                    status="🟢 $status"
+                fi
             else
                 projectName=$(basename "$(dirname "$path")")
                 serviceCount=$(cat "$path" | yq e '.services | length')
-                status="down($serviceCount)"
+                status="🔴 down($serviceCount)"
             fi
             echo -e "$projectName\t$path\t$status"
         done
@@ -34,14 +39,37 @@ function compose-find() {
 }
 
 function compose-stats() {
+    command -v bc >/dev/null 2>&1 || { echo "bc not found"; return 1; }
     export COMPOSE_PROJECT_NAME="$1"
+    declare -A cpuSum
+    declare -A cpuCount
     while true; do
-        stats=$(docker-compose stats --all --no-stream)
-        header=$(echo "$stats" | head -n 1)
-        echo -e "\x1b[34;1m$header\x1b[0m"
-        echo "$stats" | sed "1d"
+        stats=$(docker-compose stats --all --no-stream \
+            --format "{{.Name}}\t{{.CPUPerc}}\t{{.MemPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}\t{{.PIDs}}" | sed 's/\x1b\[[0-9;]*m//g')
+        output="NAME\tCPU\tAVG\tMEM\tMEM USAGE / LIMIT\tNET I/O\tBLOCK I/O\tPIDS\n"
+        while IFS=$'\t' read -r name cpu memPercent memUsage net block pids; do
+            [[ -z "$name" ]] && continue
+            cpu=$(echo "$cpu" | sed 's/%//g; s/--/0/g; s/ //g')
+            if [[ "$cpu" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+                cpuSum["$name"]=$(echo "${cpuSum["$name"]:-0} + $cpu" | bc)
+                cpuCount["$name"]=$((${cpuCount["$name"]:-0} + 1))
+                avg=$(echo "scale=2; ${cpuSum["$name"]} / ${cpuCount["$name"]}" | bc)
+                [[ "$avg" =~ ^\. ]] && avg="0$avg"
+                [[ ! "$avg" =~ \. ]] && avg="${avg}.00"
+                cpuAvg="${avg}%"
+            else
+                cpuAvg="0.00%"
+            fi
+            cpu="${cpu}%"
+            output+="$(printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s" "$name" "$cpu" "$cpuAvg" "$memPercent" "$memUsage" "$net" "$block" "$pids")\n"
+        done <<< "$stats"
+        echo -en "\033[H\033[2J"
+        output=$(echo -e "$output" | column -t -s $'\t')
+        header=$(echo -e "$output" | head -n 1)
+        header="\x1b[34;1m$header\x1b[0m"
+        echo -e "$header"
+        echo -e "$output" | sed '1d'
         sleep $COMPOSE_STATUS_TIMEOUT
-        clear
     done
 }
 
@@ -60,7 +88,7 @@ function compose-ps-bind() {
 }
 
 function compose-services() {
-    ps=$(docker-compose ps --all --format "$DOCKER_PS_FORMAT")
+    ps=$(docker-compose ps --all --format "table {{.Service}}\t{{.Image}}\t{{.State}}\t{{.Status}}\t{{.RunningFor}}\t{{.Command}}\t{{.Ports}}")
     serviceCount=$(echo "$ps" | wc -l)
     if [ "$serviceCount" -le 1 ]; then
         ps=$(
@@ -107,7 +135,7 @@ function compose-logs() {
     while true; do
         docker logs "$COMPOSE_SERVICE_NAME" --tail 100 2>&1 | tspin
         sleep $COMPOSE_STATUS_TIMEOUT
-        clear
+        echo -en "\033[H\033[2J"
     done
 }
 
@@ -140,7 +168,7 @@ function compose-ps-preview() {
             fi
             lines+=("$line")
         done < <(echo "$ps" | sed "1d")
-        clear
+        echo -en "\033[H\033[2J"
         echo -e "$header"
         IFS=$'\n'
         echo -e "${lines[*]}"
@@ -155,6 +183,7 @@ function custom-command-run() {
     if [ "$attach" == "true" ]; then
         custom-command-attach "$COMMAND"
     else
+        echo -en "\033[H\033[2J"
         eval "$COMMAND"
     fi
 }
@@ -186,24 +215,20 @@ export -f compose-ps-preview
 export -f custom-command-run
 export -f custom-command-attach
 
-# export COMPOSE_PATH=${COMPOSE_PATH:-/docker}
-export COMPOSE_PATH=${COMPOSE_PATH:-/home/lifailon/docker}
+export COMPOSE_PATH=${COMPOSE_PATH:-/docker}
 export COMPOSE_FIND_DEPTH=${COMPOSE_FIND_DEPTH:-3}
-export COMPOSE_STATUS_TIMEOUT=${COMPOSE_STATUS_TIMEOUT:-2}
+export COMPOSE_STATUS_TIMEOUT=${COMPOSE_STATUS_TIMEOUT:-1}
 
 export FZF_LIST_BORDER_COLOR="#87af87"
 export FZF_DEFAULT_OPTS="--no-sort --ansi --wrap --border --list-border --height=100% --prompt='🔎 ' --pointer='▶ '"
-export DOCKER_PS_FORMAT="table {{.Service}}\t{{.Image}}\t{{.State}}\t{{.Status}}\t{{.RunningFor}}\t{{.Command}}\t{{.Ports}}"
 
-clear
+echo -en "\033[H\033[2J"
 if [ "$TTYD_MODE" == "true" ]; then
     TTYD_OPTIONS="-W -p ${TTYD_PORT:-3333}"
     if [ -n "${TTYD_USER}" ] && [ -n "${TTYD_PASS}" ]; then
         TTYD_OPTIONS+=" -c ${TTYD_USER}:${TTYD_PASS}"
     fi
-    # exec ttyd $TTYD_OPTIONS bash -c compose-list
     ttyd $TTYD_OPTIONS bash -c compose-list
 else
-    # exec bash -c compose-list
-    bash -c compose-list
+    compose-list
 fi
