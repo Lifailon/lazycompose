@@ -24,19 +24,19 @@ customCommands:
     command: docker-compose stop $COMPOSE_SERVICE_NAME
     attach: true
   - name: 🔍 Logs fuzzy
-    command: docker logs $COMPOSE_SERVICE_NAME --follow --timestamps 2>&1 | tspin | fzf --reverse --bind "result:last"
+    command: docker logs $COMPOSE_CONTAINER_NAME --follow --timestamps 2>&1 | tspin | fzf --reverse --bind "result:last"
     attach: false
   - name: 🎯 Logs exact
-    command: docker logs $COMPOSE_SERVICE_NAME --follow --timestamps 2>&1 | tspin | fzf --reverse --bind "result:last" --exact
+    command: docker logs $COMPOSE_CONTAINER_NAME --follow --timestamps 2>&1 | tspin | fzf --reverse --bind "result:last" --exact
     attach: false
   - name: 💡 Logs regex
     command: |
       echo "" | fzf --reverse --bind "result:last" --disabled \
-        --bind "start:reload(docker  logs $COMPOSE_SERVICE_NAME --timestamps 2>&1 | tspin | rg --smart-case --color=always {q})" \
-        --bind "change:reload(docker logs $COMPOSE_SERVICE_NAME --timestamps 2>&1 | tspin | rg --smart-case --color=always {q} || echo '⚠️ Invalid regex pattern')"
+        --bind "start:reload(docker  logs $COMPOSE_CONTAINER_NAME --timestamps 2>&1 | tspin | rg --smart-case --color=always {q})" \
+        --bind "change:reload(docker logs $COMPOSE_CONTAINER_NAME --timestamps 2>&1 | tspin | rg --smart-case --color=always {q} || echo '⚠️ Invalid regex pattern')"
     attach: false
   - name: 💬 Logs json
-    command: docker logs $COMPOSE_SERVICE_NAME --follow 2>&1 | while read -r line; do echo $line | jq -cC; done | fzf --reverse --bind "result:last" --exact
+    command: docker logs $COMPOSE_CONTAINER_NAME --follow 2>&1 | while read -r line; do echo $line | jq -cC; done | fzf --reverse --bind "result:last" --exact
     attach: false
   - name: 💻 Sh
     command: docker-compose exec $COMPOSE_SERVICE_NAME sh
@@ -44,7 +44,7 @@ customCommands:
   - name: 🔑 Bash root
     command: docker-compose exec -u root $COMPOSE_SERVICE_NAME bash
     attach: false
-  - name: 📊 top
+  - name: 📊 TOP
     command: docker-compose top
     attach: true
   - name: 🏔️ Alpine htop
@@ -53,29 +53,26 @@ customCommands:
   - name: 🌀 Debian htop
     command: docker-compose exec $COMPOSE_SERVICE_NAME sh -c 'apt update && apt install -y htop && htop'
     attach: false
-  - name: 🌐 Web links
-    command: IP=$(hostname -I | awk '{print $1}'); docker port $COMPOSE_SERVICE_NAME | awk -F ':' -v ip="$IP" '$2!="" {print "http://"ip":"$2}' | sort -u
-    attach: true
   - name: 🏷️ Inspect config labels
     command: |
       echo "" | fzf --reverse --disabled --query ".[].Config.Labels" \
-        --bind "start:reload(docker inspect $COMPOSE_SERVICE_NAME | jq -C {q})" \
-        --bind "change:reload(docker inspect $COMPOSE_SERVICE_NAME | jq -C {q} || echo -e '⚠️ Invalid query filter')"
+        --bind "start:reload(docker inspect $COMPOSE_CONTAINER_NAME | jq -C {q})" \
+        --bind "change:reload(docker inspect $COMPOSE_CONTAINER_NAME | jq -C {q} || echo -e '⚠️ Invalid query filter')"
     attach: false
   - name: 📂 Diff files
     command: |
-      clear && docker diff $COMPOSE_SERVICE_NAME | sed \
+      clear && docker diff $COMPOSE_CONTAINER_NAME | sed \
         -e "s/^A /$(printf '\033[32mA\033[0m ')/" \
         -e "s/^C /$(printf '\033[33mC\033[0m ')/" \
         -e "s/^D /$(printf '\033[31mD\033[0m ')/"
     attach: true
   - name: 📋 Copy files
     command: |
-      docker cp $COMPOSE_SERVICE_NAME:$FILE ./
-      FILES=$(docker-compose exec $COMPOSE_SERVICE_NAME find / -type f | fzf --reverse --multi --exact)
+      docker cp $COMPOSE_CONTAINER_NAME:$FILE ./
+      FILES=$(docker exec $COMPOSE_CONTAINER_NAME find / -type f | fzf --reverse --multi --exact)
       if [ -n "$FILES" ]; then
         echo "$FILES" | while read -r FILE; do
-          docker cp $COMPOSE_SERVICE_NAME:"$FILE" ./
+          docker cp $COMPOSE_CONTAINER_NAME:"$FILE" ./
         done
       fi && read
     attach: false
@@ -85,7 +82,7 @@ customCommands:
   - name: 🔨 Build image
     command: TARGETARCH=$(docker version -f {{.Server.Arch}}) docker-compose up -d --build $COMPOSE_SERVICE_NAME
     attach: true
-  - name: 📮 Images delete
+  - name: 📮 Images view and delete
     command: |
       docker images --all | { 
         read -r header
@@ -99,14 +96,17 @@ customCommands:
           fi
       } && read
     attach: false
+  - name: 🧹 Images prune
+    command: docker image prune --all
+    attach: false
   - name: 📥 Images update
     command: docker-compose pull
     attach: true
   - name: 📦 Image history
-    command: docker history $COMPOSE_IMAGE_NAME
+    command: docker history $COMPOSE_CONTAINER_NAME
     attach: true
   - name: 💾 Image save
-    command: docker save $COMPOSE_IMAGE_NAME | dd status=progress | gzip > $(echo $COMPOSE_IMAGE_NAME | sed -r "s/\/|:/-/g").tar.gz && ls -lh *.tar.gz
+    command: docker save $COMPOSE_CONTAINER_NAME | dd status=progress | gzip > $(echo $COMPOSE_CONTAINER_NAME | sed -r "s/\/|:/-/g").tar.gz && ls -lh *.tar.gz
     attach: true
   - name: ☁️ Docker Hub tags
     command: |

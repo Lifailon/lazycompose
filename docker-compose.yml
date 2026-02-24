@@ -13,7 +13,6 @@ services:
     environment:
       - COMPOSE_PATH=/docker
       - COMPOSE_FIND_DEPTH=3
-      - COMPOSE_STATUS_TIMEOUT=1
       - TTYD_MODE=false
       - TTYD_PORT=3333
       - TTYD_USER=
