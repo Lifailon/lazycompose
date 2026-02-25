@@ -173,6 +173,7 @@ function compose-ps-preview() {
         echo -e "$header"
         IFS=$'\n'
         echo -e "${lines[*]}"
+        sleep 1
     done
 }
 
