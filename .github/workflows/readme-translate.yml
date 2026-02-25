@@ -1,4 +1,4 @@
-name: AI Translation
+name: AI Translate
 
 on:
   workflow_dispatch:
@@ -67,7 +67,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "actions: readme translation"
-          branch: "docs/translation"
+          branch: "docs/readme"
           title: "README translation on ${{ github.event.inputs.Language }}"
           body: "AI-powered translation of a README file"
           add-paths: |
