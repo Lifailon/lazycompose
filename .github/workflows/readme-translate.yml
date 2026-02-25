@@ -1,0 +1,74 @@
+name: AI Translation
+
+on:
+  workflow_dispatch:
+    inputs:
+      Input:
+        description: Input README file
+        required: true
+        default: README_RU.md
+      Output:
+        description: Output README file
+        required: true
+        default: README.md
+      Language:
+        description: Target language for translation
+        required: true
+        default: English
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+      models: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Read README
+        id: read_file
+        run: |
+          INPUT_README=$(cat ${{ github.event.inputs.Input }})
+          {
+            echo "readme<<EOF"
+            echo "$INPUT_README"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: AI-powered translation
+        id: ai_translate
+        uses: actions/ai-inference@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          endpoint: https://models.github.ai/inference
+          model: gpt-4.1
+          max-tokens: 4096
+          system-prompt: |
+            You are a professional translator in the automated GitHub Actions CI system.
+            Translate the file submitted in the README message into ${{ github.event.inputs.Language }}.
+            You should not provide answers or change the original text structure.
+            Preserve the original Markdown formatting and links.
+          prompt: ${{ steps.read_file.outputs.readme }}
+
+      - name: Write README
+        env:
+          README_TRANSLATE: ${{ steps.ai_translate.outputs.answer }}
+        run: |
+          cat <<'EOF' > ${{ github.event.inputs.Output }}
+          ${{ env.README_TRANSLATE }}
+          EOF
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "actions: readme translation"
+          branch: "docs/translation"
+          title: "README translation on ${{ github.event.inputs.Language }}"
+          body: "AI-powered translation of a README file"
+          add-paths: |
+            ${{ github.event.inputs.Output }}
