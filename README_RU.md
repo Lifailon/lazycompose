@@ -1,4 +1,10 @@
-# lazycompose
+<h2 align="center">
+  lazycompose 🐙
+</h2>
+
+<h4 align="center">
+    <a href="README.md">English</a> | <strong>Russian</strong>
+</h4>
 
 Управление сервисами Docker Compose из терминала или браузера.
 

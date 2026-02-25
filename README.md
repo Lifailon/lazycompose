@@ -1,4 +1,10 @@
-# lazycompose
+<h2 align="center">
+  lazycompose 🐙
+</h2>
+
+<h4 align="center">
+  <strong>English</strong> | <a href="README_RU.md">Russian</a>
+</h4>
 
 Manage Docker Compose services from the terminal or browser.
 
