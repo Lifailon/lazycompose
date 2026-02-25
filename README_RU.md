@@ -1,6 +1,6 @@
-<h2 align="center">
+<h1 align="center">
   lazycompose 🐙
-</h2>
+</h1>
 
 <h4 align="center">
     <a href="README.md">English</a> | <strong>Russian</strong>
@@ -68,7 +68,7 @@ customCommands:
 
 ## Install
 
-Для запуска контейнера, загрузите файл [docker-compose.yml](docker-compose.yml) и используйте образ из [Docker Hub](https://hub.docker.com/r/lifailon/docker-web-manager):
+Для запуска контейнера, загрузите файл [docker-compose.yml](docker-compose.yml) и используйте образ из [Docker Hub](https://hub.docker.com/r/lifailon/lazycompose):
 
 ```bash
 mkdir lazycompose && cd lazycompose

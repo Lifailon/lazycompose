@@ -1,6 +1,6 @@
-<h2 align="center">
+<h1 align="center">
   lazycompose 🐙
-</h2>
+</h1>
 
 <h4 align="center">
   <strong>English</strong> | <a href="README_RU.md">Russian</a>
@@ -68,7 +68,7 @@ The interface is entirely based on [fzf](https://github.com/junegunn/fzf), and t
 
 ## Install
 
-To run the container, download the [docker-compose.yml](docker-compose.yml) file and use the image from [Docker Hub](https://hub.docker.com/r/lifailon/docker-web-manager):
+To run the container, download the [docker-compose.yml](docker-compose.yml) file and use the image from [Docker Hub](https://hub.docker.com/r/lifailon/lazycompose):
 
 ```bash
 mkdir lazycompose && cd lazycompose
