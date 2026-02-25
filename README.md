@@ -2,7 +2,9 @@
 
 Manage Docker Compose services from the terminal or browser.
 
-![demo](img/demo.gif)
+![Project list](img/project-list.png)
+
+![Service list](img/service-list.png)
 
 I lacked a full-featured tool for managing containers using Docker Compose that covered all my needs. There is the excellent [Dockge](https://github.com/louislam/dockge) project, but it lacks features for managing individual services or conveniently viewing and filtering logs, for example, as in [Dozzle](https://github.com/amir20/dozzle).
 

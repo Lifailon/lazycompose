@@ -2,7 +2,9 @@
 
 Управление сервисами Docker Compose из терминала или браузера.
 
-![demo](img/demo.gif)
+![Project list](img/project-list.png)
+
+![Service list](img/service-list.png)
 
 Мне не хватало полноценного инструмента для управления контейнерами с использованием Docker Compose, который бы покрывал все мои потребности. Существует прекрасный проект [Dockge](https://github.com/louislam/dockge), но у него отсутствуют функции для управление отдельными сервисами или удобного просмотра и фильтрации логов, например, как в [Dozzle](https://github.com/amir20/dozzle).
 
