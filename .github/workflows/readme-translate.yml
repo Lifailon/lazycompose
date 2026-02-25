@@ -56,7 +56,7 @@ jobs:
 
       - name: Write README
         env:
-          README_TRANSLATE: ${{ steps.ai_translate.outputs.answer }}
+          README_TRANSLATE: ${{ steps.ai_translate.outputs.response }}
         run: |
           cat <<'EOF' > ${{ github.event.inputs.Output }}
           ${{ env.README_TRANSLATE }}

@@ -12,7 +12,6 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install Docker Buildx
-        if: ${{ github.event.inputs.Docker == 'true' }}
         uses: docker/setup-buildx-action@v3
         with:
           driver: docker-container
