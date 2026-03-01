@@ -65,6 +65,7 @@ The interface is entirely based on [fzf](https://github.com/junegunn/fzf), and t
 - [jq](https://github.com/jqlang/jq) for parsing service configurations and logs in `json` format.
 - [fd](https://github.com/sharkdp/fd) for log filtering with regex support.
 - [tailspin](https://github.com/bensadeh/tailspin) for colored log output.
+- [dive](https://github.com/wagoodman/dive) for analyzing images in selected services.
 
 ## Install
 

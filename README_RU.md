@@ -65,6 +65,7 @@ customCommands:
 - [jq](https://github.com/jqlang/jq) для парсинга конфигурации сервисов и логов в формате `json`.
 - [fd](https://github.com/sharkdp/fd) для фильтрации логов с поддержкой регулярных выражений.
 - [tailspin](https://github.com/bensadeh/tailspin) для покраски вывода логов.
+- [dive](https://github.com/wagoodman/dive) для анализа образов в выбранных сервисах.
 
 ## Install
 

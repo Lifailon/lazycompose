@@ -27,7 +27,11 @@ RUN ARCH=$(case ${TARGETARCH} in \
     curl -sSLf "https://github.com/docker/compose/releases/download/${latest}/docker-compose-linux-${ARCH}" -o /bin/docker-compose && \
     latest=$(curl -s https://api.github.com/repos/bensadeh/tailspin/releases/latest | jq -r .tag_name) && \
     curl -sSLf "https://github.com/bensadeh/tailspin/releases/download/${latest}/tailspin-${ARCH}-unknown-linux-musl.tar.gz" -o /tmp/tailspin.tar.gz && \
-    tar -xzf /tmp/tailspin.tar.gz -C /bin/ tspin && rm /tmp/tailspin.tar.gz
+    tar -xzf /tmp/tailspin.tar.gz -C /bin/ tspin && \
+    latest=$(curl -s https://api.github.com/repos/wagoodman/dive/releases/latest | jq -r .tag_name) && \
+    curl -sSLf "https://github.com/wagoodman/dive/releases/download/${latest}/dive_${latest#v}_linux_${TARGETARCH}.tar.gz" -o /tmp/dive.tar.gz && \
+    tar -xzf /tmp/dive.tar.gz -C /bin/ dive && \
+    rm -rf /tmp/*
 
 COPY config.yml /config.yml
 COPY lazycompose /lazycompose.sh
