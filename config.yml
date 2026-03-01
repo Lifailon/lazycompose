@@ -6,15 +6,15 @@ customCommands:
     command: find $(dirname $COMPOSE_FILE) -maxdepth 1 -iname *env* | head -n 1 | xargs micro
     attach: false
   - name: 👁️ ENV view
-    command: docker-compose exec $COMPOSE_SERVICE_NAME env
+    command: docker-compose exec $COMPOSE_SERVICE_NAME printenv
     attach: true
-  - name: 🔼 Up stack
+  - name: 🔼 Up project
     command: docker-compose up -d
     attach: true
-  - name: 🔻 Down stack
+  - name: 🔻 Down project
     command: docker-compose down
     attach: true
-  - name: ♻️ Recreate stack
+  - name: ♻️ Recreate project
     command: docker-compose up -d --force-recreate
     attach: true
   - name: 🔄 Restart container
@@ -24,9 +24,6 @@ customCommands:
     command: docker-compose stop $COMPOSE_SERVICE_NAME
     attach: true
   - name: 🔍 Logs fuzzy
-    command: docker logs $COMPOSE_CONTAINER_NAME --follow --timestamps 2>&1 | tspin | fzf --reverse --bind "result:last"
-    attach: false
-  - name: 🎯 Logs exact
     command: docker logs $COMPOSE_CONTAINER_NAME --follow --timestamps 2>&1 | tspin | fzf --reverse --bind "result:last" --exact
     attach: false
   - name: 💡 Logs regex
@@ -36,13 +33,21 @@ customCommands:
         --bind "change:reload(docker logs $COMPOSE_CONTAINER_NAME --timestamps 2>&1 | tspin | rg --smart-case --color=always {q} || echo '⚠️ Invalid regex pattern')"
     attach: false
   - name: 💬 Logs json
-    command: docker logs $COMPOSE_CONTAINER_NAME --follow 2>&1 | while read -r line; do echo $line | jq -cC; done | fzf --reverse --bind "result:last" --exact
+    command: |
+      if docker logs --tail 1 $COMPOSE_CONTAINER_NAME 2>&1 | jq -e . >/dev/null 2>&1; then
+        docker logs $COMPOSE_CONTAINER_NAME --follow 2>&1 | while read -r line; do
+          echo $line | jq -cC
+        done | fzf --reverse --bind "result:last" --exact
+      fi
     attach: false
-  - name: 💻 Sh
-    command: docker-compose exec $COMPOSE_SERVICE_NAME sh
+  - name: 💻 Bash
+    command: docker exec -it $COMPOSE_CONTAINER_NAME sh -c bash
     attach: false
-  - name: 🔑 Bash root
-    command: docker-compose exec -u root $COMPOSE_SERVICE_NAME bash
+  - name: 🔑 Shell root
+    command: docker exec -it --user root $COMPOSE_CONTAINER_NAME sh
+    attach: false
+  - name: 🔌 Shell image
+    command: docker run -it --rm --entrypoint sh $COMPOSE_IMAGE_NAME
     attach: false
   - name: 📊 TOP
     command: docker-compose top
@@ -96,18 +101,18 @@ customCommands:
           fi
       } && read
     attach: false
-  - name: 🧹 Images prune
-    command: docker image prune --all
-    attach: false
   - name: 📥 Images update
     command: docker-compose pull
     attach: true
+  - name: 💎 Image analysis
+    command: dive $COMPOSE_IMAGE_NAME
+    attach: false
   - name: 📦 Image history
-    command: docker history $COMPOSE_CONTAINER_NAME
+    command: docker history $COMPOSE_IMAGE_NAME
     attach: true
   - name: 💾 Image save
-    command: docker save $COMPOSE_CONTAINER_NAME | dd status=progress | gzip > $(echo $COMPOSE_CONTAINER_NAME | sed -r "s/\/|:/-/g").tar.gz && ls -lh *.tar.gz
-    attach: true
+    command: docker save $COMPOSE_IMAGE_NAME | dd status=progress | gzip > $(echo $COMPOSE_IMAGE_NAME | sed -r "s/\/|:/-/g").tar.gz && ls -lh *.tar.gz
+    attach: false
   - name: ☁️ Docker Hub tags
     command: |
       replaceTag=$(echo $COMPOSE_IMAGE_NAME | sed -r "s/:.+//")
