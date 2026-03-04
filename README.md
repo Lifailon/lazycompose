@@ -69,7 +69,9 @@ The interface is entirely based on [fzf](https://github.com/junegunn/fzf), and t
 
 ## Install
 
-To run the container, download the [docker-compose.yml](docker-compose.yml) file and use the image from [Docker Hub](https://hub.docker.com/r/lifailon/lazycompose):
+### Docker
+
+To run the container, download the [docker-compose](docker-compose.yml) file and use the image from [Docker Hub](https://hub.docker.com/r/lifailon/lazycompose):
 
 ```bash
 mkdir lazycompose && cd lazycompose
@@ -81,3 +83,14 @@ docker attach lazycompose
 The interface and file editor support mouse control.
 
 To enable web mode, change the `TTYD_MODE` variable to `true` and go to `http://127.0.0.1:3333`
+
+### Make
+
+For local installation, use [Makefile](/Makefile) with pre-installed dependencies on a Debian-based system:
+
+```bash
+git clone https://github.com/Lifailon/lazycompose
+cd lazycompose
+make install
+COMPOSE_PATH=/home/lifailon/docker lazycompose
+```

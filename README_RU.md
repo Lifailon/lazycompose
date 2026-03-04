@@ -69,7 +69,9 @@ customCommands:
 
 ## Install
 
-Для запуска контейнера, загрузите файл [docker-compose.yml](docker-compose.yml) и используйте образ из [Docker Hub](https://hub.docker.com/r/lifailon/lazycompose):
+### Docker
+
+Для запуска контейнера, загрузите файл [docker-compose](docker-compose.yml) и используйте образ из [Docker Hub](https://hub.docker.com/r/lifailon/lazycompose):
 
 ```bash
 mkdir lazycompose && cd lazycompose
@@ -81,3 +83,14 @@ docker attach lazycompose
 Интерфейс и файловый редактор поддерживают управление мышью.
 
 Что бы включить веб режим, измените переменную `TTYD_MODE` на `true` и перейдите в `http://127.0.0.1:3333`
+
+### Make
+
+Для локальной установки используйте [Makefile](/Makefile) с предварительной установкой зависимостей в системе на базе Debian:
+
+```bash
+git clone https://github.com/Lifailon/lazycompose
+cd lazycompose
+make install
+COMPOSE_PATH=/home/lifailon/docker lazycompose
+```

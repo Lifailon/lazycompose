@@ -36,6 +36,6 @@ RUN ARCH=$(case ${TARGETARCH} in \
 COPY config.yml /config.yml
 COPY lazycompose /lazycompose.sh
 
-RUN chmod +x /bin/ttyd /bin/docker-compose /bin/tspin /lazycompose.sh
+RUN chmod +x /bin/ttyd /bin/docker-compose /bin/tspin /bin/dive /lazycompose.sh
 
 ENTRYPOINT ["/lazycompose.sh"]
